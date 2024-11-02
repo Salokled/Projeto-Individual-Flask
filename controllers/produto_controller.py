@@ -1,49 +1,45 @@
 from flask import Blueprint, request, jsonify
 from models import db, Produto
+from flask_jwt_extended import jwt_required
 
-# instância(objeto) de Blueprint
-produto_bp = Blueprint('produtos', __name__)
+produto_bp = Blueprint('produto', __name__)
 
-# Decorator da rota produtos, que é do tipo POST (enviando dados)
-@produto_bp.route('/produtos', methods=['POST'])
+@produto_bp.route('/produto', methods=['POST'])
+@jwt_required()
 def criar_produto():
-    
-    produto = request.json
-    novo_produto = Produto(produto_nome=produto['produto_nome'],                           produto_preco=produto['produto_preco'])
+    dados = request.json
+    novo_produto = Produto(nome=dados['nome'])
     db.session.add(novo_produto)
     db.session.commit()
-    
-    return jsonify({'id': novo_produto.produto_id, 'nome': novo_produto.produto_nome, 'preco': novo_produto.produto_preco}), 201
+    return jsonify({'id': novo_produto.id, 'nome': novo_produto.nome, 'categoria_id': novo_produto.categoria_id}), 201
 
-
-@produto_bp.route('/produtos', methods=['GET'])
+@produto_bp.route('/produto', methods=['GET'])
+@jwt_required()
 def listar_produtos():
     produtos = Produto.query.all()
+    return jsonify([{'id': p.id, 'nome': p.nome, 'categoria_id': p.categoria_id} for p in produtos]), 200
 
-    return jsonify([{'ID': p.produto_id, 'Nome': p.produto_nome, 'preco': p.produto_preco} for p in produtos]), 200 
-
-@produto_bp.route('/produtos/<int:id>', methods=['PUT'])
+@produto_bp.route('/produto/<int:id>', methods=['PUT'])
+@jwt_required()
 def atualizar_produto(id):
     dados = request.json
     produto = Produto.query.get(id)
-
+    
     if not produto:
-        return jsonify({'Mensagem': 'Produto não encontrado'}), 404
-
-    produto.produto_nome = dados['produto_nome']
+        return jsonify({'erro': 'Produto não encontrado'}), 404
+    
+    produto.nome = dados['nome']
     db.session.commit()
+    return jsonify({'id': produto.id, 'nome': produto.nome, 'categoria_id': produto.categoria_id}), 200
 
-    return jsonify({'Produto alterado': produto.produto_nome})
-
-@produto_bp.route('/produtos/<int:id>', methods=['DELETE'])
-def excluir_produto(id):
-    #dados = request.json
+@produto_bp.route('/produto/<int:id>', methods=['DELETE'])
+@jwt_required()
+def deletar_produto(id):
     produto = Produto.query.get(id)
-
+    
     if not produto:
-        return jsonify({'Mensagem': 'Produto não encontrado'})
+        return jsonify({'erro': 'Produto não encontrado'}), 404
     
     db.session.delete(produto)
     db.session.commit()
-
-    return jsonify({'Mensagem': 'Produto excluído'}), 200
+    return jsonify({'mensagem': 'Produto deletado com sucesso'}), 200

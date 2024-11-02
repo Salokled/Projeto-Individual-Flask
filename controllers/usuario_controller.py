@@ -1,47 +1,52 @@
 from flask import Blueprint, request, jsonify
 from models import db, Usuario
+from flask_jwt_extended import jwt_required
 
-# instância(objeto) de Blueprint
-usuario_bp = Blueprint('usuarios', __name__)
+usuario_bp = Blueprint('usuario', __name__)
 
-# Decorator da rota produtos, que é do tipo POST (enviando dados)
-@usuario_bp.route('/usuarios', methods=['POST'])
+@usuario_bp.route('/usuario', methods=['POST'])
+
 def criar_usuario():
-    
-    usuario = request.json
-    novo_usuario = Usuario(usuario_login=usuario['usuario_login'], usuario_senha=usuario['usuario_senha'])
+    dados = request.json
+    if not all(key in dados for key in ('nome', 'senha')):
+        return jsonify({'erro': 'Faltam dados'}), 400
+
+    novo_usuario = Usuario(nome=dados['nome'], senha=dados['senha'])
     db.session.add(novo_usuario)
     db.session.commit()
-    
-    return jsonify({'id': novo_usuario.usuario_id, 'nome': novo_usuario.usuario_login}), 201
+    return jsonify({'id': novo_usuario.id, 'nome': novo_usuario.nome}), 201
 
-@usuario_bp.route('/usuarios', methods=['GET'])
+@usuario_bp.route('/usuario', methods=['GET'])
+@jwt_required()
 def listar_usuarios():
     usuarios = Usuario.query.all()
+    return jsonify([{'id': u.id, 'nome': u.nome} for u in usuarios]), 200
 
-    return jsonify([{'ID': p.usuario_id, 'Nome': p.usuario_login, 'Senha': p.usuario_senha} for p in usuarios]), 200 
-
-@usuario_bp.route('/usuarios/<int:id>', methods=['PUT'])
+@usuario_bp.route('/usuario/<int:id>', methods=['PUT'])
+@jwt_required()
 def atualizar_usuario(id):
     dados = request.json
+
+    if not any(key in dados for key in ('nome', 'senha')):
+        return jsonify({'erro': 'Faltam dados'}), 400
+    
     usuario = Usuario.query.get(id)
-
     if not usuario:
-        return jsonify({'Mensagem': 'Usuário não encontrado'}), 404
-
-    usuario.usuario_login = dados['usuario_login']
+        return jsonify({'erro': 'Usuário não encontrado'}), 404
+    
+    usuario.nome = '' + dados.get('nome', usuario.nome)
+    usuario.senha = '' + dados.get('senha', usuario.senha)
     db.session.commit()
+    return jsonify({'id': usuario.id, 'nome': usuario.nome}), 200
 
-    return jsonify({'Usuário alterado': usuario.usuario_login})
-
-@usuario_bp.route('/usuarios/<int:id>', methods=['DELETE'])
-def excluir_usuario(id):
+@usuario_bp.route('/usuario/<int:id>', methods=['DELETE'])
+@jwt_required()
+def deletar_usuario(id):
     usuario = Usuario.query.get(id)
-
+    
     if not usuario:
-        return jsonify({'Mensagem': 'Usuário não encontrado'}), 404  # Retornando 404 se o usuário não for encontrado
+        return jsonify({'erro': 'Usuário não encontrado'}), 404
     
     db.session.delete(usuario)
     db.session.commit()
-
-    return jsonify({'Mensagem': 'Usuário excluído'}), 200
+    return jsonify({'mensagem': 'Usuário deletado com sucesso'}), 200

@@ -1,11 +1,10 @@
-from . import db
+from . import db 
 
 class Pedido(db.Model):
-    __tablename__ = "pedidos"
+    id = db.Column(db.Integer, primary_key=True)
+    produto_id = db.Column(db.Integer, db.ForeignKey('produto.id'), nullable=False)
+    valor = db.Column(db.Float, nullable=False)
+    desconto = db.Column(db.Float, nullable=False)
 
-    pedido_id = db.Column(db.Integer, primary_key=True)
-    data_compra = db.Column(db.Date)
-
-    cliente_id = db.Column(db.Integer, db.ForeignKey('clientes.cliente_id'), nullable=False) 
-
-    cliente = db.relationship('Cliente', backref='pedidos', lazy='select')
+    def __repr__(self):
+        return f'<Pedido {self.id}>'
